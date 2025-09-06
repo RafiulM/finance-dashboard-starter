@@ -1,179 +1,177 @@
-# Backend Structure Document
+# Backend Structure Document for Finance Dashboard Starter
 
-This document outlines the backend architecture, hosting, and infrastructure for the **codeguide-starter** project. It uses plain language so anyone can understand how the backend is set up and how it supports the application.
+This document explains how the backend of the finance-dashboard-starter is organized, hosted, and maintained. It’s written in everyday language so anyone can understand the setup, even without a deep technical background.
 
 ## 1. Backend Architecture
 
-- **Framework and Design Pattern**
-  - We use **Next.js API Routes** to handle all server-side logic. These routes live alongside the frontend code in the same repository, making development and deployment simpler.
-  - The backend follows a **layered pattern**:
-    1. **API Layer**: Receives requests (login, registration, data fetch).  
-    2. **Service Layer**: Contains the core business logic (user validation, password hashing).  
-    3. **Data Access Layer**: Talks to the database via a simple ORM (e.g., Prisma or TypeORM).
+Overall, the backend is built right into the same project as the frontend, using Next.js API Routes. Here’s how it hangs together:
 
-- **Scalability**
-  - Stateless API routes can scale horizontally—new instances can spin up on demand.  
-  - We can add caching or a message queue (e.g., Redis or RabbitMQ) without changing the core code.
+- **Next.js API Routes**: Files under `/app/api/` become HTTP endpoints automatically. For example, `route.ts` in `/app/api/auth` handles all the signup and login requests.
+- **Node.js Runtime**: Under the hood, these API routes run on Node.js—JavaScript on the server—so you don’t need a separate server framework.
+- **TypeScript**: Both frontend and backend code use TypeScript. It adds checks that catch mistakes early and makes the code easier to read.
 
-- **Maintainability**
-  - Code for each feature is grouped by route (authentication, dashboard).  
-  - A service layer separates complex logic from request handling.
+Why this architecture works:
 
-- **Performance**
-  - Lightweight Node.js handlers keep response times low.  
-  - Future use of database connection pooling and Redis for caching repeated queries.
+- **Scalability**: Each API route can scale independently (for example, as serverless functions), so it can handle more users without rewriting the code.
+- **Maintainability**: Keeping API files next to their related frontend code makes it easy to find and update logic.
+- **Performance**: Next.js handles server-side rendering (SSR) and lets you split code so users only download what they need.
 
 ## 2. Database Management
 
-- **Database Choice**
-  - We recommend **PostgreSQL** for structured data and reliable transactions.  
-  - In-memory caching can be added later with **Redis** for session tokens or frequently read data.
+### Current Setup (V1)
+- We use a simple `data.json` file to store and serve financial data. This is great for prototyping because you can start building the dashboard right away without setting up a database.
 
-- **Data Storage and Access**
-  - Use an ORM like **Prisma** or **TypeORM** to map JavaScript/TypeScript objects to database tables.
-  - Connection pooling ensures efficient use of database connections under load.
-  - Migrations track schema changes over time, keeping development, staging, and production in sync.
-
-- **Data Practices**
-  - Passwords are never stored in plain text—they are salted and hashed with **bcrypt** before saving.
-  - All outgoing data is typed and validated to prevent malformed records.
+### Future Plan (V2+)
+- We intend to move to a real database. Two popular choices are:
+  - **PostgreSQL (SQL)**: A reliable, widely used relational database.
+  - **MongoDB (NoSQL)**: A flexible document store that handles changing data structures easily.
+- To interact with the database, we’ll use an ORM (Object-Relational Mapper) such as **Prisma** or **TypeORM**. This makes it easier to read and write data without writing raw SQL all the time.
+- **Environment variables** will hold the database connection details (address, username, password) so sensitive information never lives in the code.
 
 ## 3. Database Schema
 
-### Human-Readable Format
+### For the Static JSON (Current)
 
-- **Users**
-  - **id**: Unique identifier  
-  - **email**: User’s email address (unique)  
-  - **password_hash**: Securely hashed password  
-  - **created_at**: Account creation timestamp
+Our `data.json` might look something like this in human-readable form:
 
-- **Sessions**
-  - **id**: Unique session record  
-  - **user_id**: Links to a user  
-  - **token**: Random string for authentication  
-  - **expires_at**: When the token stops working  
-  - **created_at**: When the session was created
+- An array of **transaction records**
+  - `id`: Unique identifier
+  - `userId`: References which user saw or created this record
+  - `date`: When the transaction happened
+  - `amount`: How much money moved (positive or negative)
+  - `category`: e.g., "Food", "Rent"
+  - `description`: Free-text note
+- Summary objects for **key metrics**
+  - `totalBalance`
+  - `monthlySpending`
+  - `recentTransactions`
 
-- **DashboardItems** *(optional for dynamic data)*
-  - **id**: Unique record  
-  - **title**: Item title  
-  - **content**: Item details  
-  - **created_at**: When the item was added
+### Proposed SQL Schema (PostgreSQL)
 
-### SQL Schema (PostgreSQL)
 ```sql
 -- Users table
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   email VARCHAR(255) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Sessions table
-CREATE TABLE sessions (
+-- Financial transactions table
+CREATE TABLE transactions (
   id SERIAL PRIMARY KEY,
-  user_id INT REFERENCES users(id) ON DELETE CASCADE,
-  token VARCHAR(255) UNIQUE NOT NULL,
-  expires_at TIMESTAMPTZ NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  amount NUMERIC(12, 2) NOT NULL,
+  category VARCHAR(100),
+  description TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Dashboard items table
-CREATE TABLE dashboard_items (
-  id SERIAL PRIMARY KEY,
-  title TEXT NOT NULL,
-  content TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+-- Example index for faster lookups
+CREATE INDEX idx_transactions_user_date ON transactions(user_id, date);
 ```  
+
+If we choose MongoDB instead, the `transaction` documents would store the same fields (userId, date, amount, category, description) inside a JSON-like document.
 
 ## 4. API Design and Endpoints
 
-- **Approach**: We follow a **RESTful** style, grouping related endpoints under `/api` directories.
+We follow a RESTful style where each endpoint does one clear job. Here are the key routes:
 
-- **Key Endpoints**
-  - `POST /api/auth/register`  
-    • Accepts `{ email, password }`  
-    • Creates a new user and issues a session token  
-  - `POST /api/auth/login`  
-    • Accepts `{ email, password }`  
-    • Verifies credentials and returns a session token  
-  - `POST /api/auth/logout`  
-    • Invalidates the session token on the server  
-  - `GET /api/dashboard/data`  
-    • Requires a valid session  
-    • Returns user-specific data or dashboard items  
+- **POST `/api/auth`**
+  - Purpose: Handle both **sign-up** and **sign-in** requests.
+  - How it works:
+    - Checks if email is already registered.
+    - Hashes passwords with **bcrypt**.
+    - Issues a **JWT** or sets a secure cookie for sessions.
 
-- **Communication**
-  - Frontend sends JSON requests; backend replies with JSON and appropriate HTTP status codes.  
-  - Protected routes check for a valid session token (in cookies or Authorization header).
+- **GET `/api/data`** (future)
+  - Purpose: Fetch financial data for the logged-in user.
+  - Returns: Transaction list and summary metrics.
+
+- **POST `/api/data`** (future)
+  - Purpose: Add or update financial records.
+  - Body: Transaction details (date, amount, category, description).
+
+Each endpoint:
+
+- Validates inputs to prevent bad data or injection attacks.
+- Sends meaningful success or error messages.
+- Checks authentication (except the auth route).
 
 ## 5. Hosting Solutions
 
-- **Cloud Provider**:  
-  - **Vercel** (recommended) offers seamless Next.js deployments, auto-scaling, and built-in CDN.  
-  - Alternatively, **Netlify** or any Node.js-capable host will work.
+We recommend using a cloud provider that supports serverless functions and static site hosting. A popular choice is **Vercel** (the team behind Next.js):
 
-- **Benefits**
-  - **Reliability**: Global servers and failover across regions.  
-  - **Scalability**: Auto-scale serverless functions based on traffic.  
-  - **Cost-Effectiveness**: Pay-per-use model means low cost for small projects.
+- **Seamless Deployments**: Push to GitHub, and Vercel builds + publishes your app automatically.
+- **Serverless API Routes**: Your Next.js API routes run as isolated functions without server setup.
+- **Global CDN**: Static assets (CSS, images) are cached around the world for fast loads.
+- **Custom Domains & HTTPS**: Easy to configure and free.
+
+Alternatives include Netlify, AWS Lambda + S3, or DigitalOcean App Platform. The key is support for Node.js and environment variables.
 
 ## 6. Infrastructure Components
 
-- **Load Balancer**
-  - Provided by the hosting platform—distributes API requests across function instances.
+Even in a starter template, several pieces work together to keep things smooth:
 
-- **CDN (Content Delivery Network)**
-  - Vercel’s global edge network caches static assets (CSS, JS, images) for faster page loads.
+- **Load Balancer / Edge Network** (provided by Vercel)
+  - Routes incoming requests to the nearest serverless function or static asset cache.
+- **Content Delivery Network (CDN)**
+  - Caches CSS, images, and JavaScript files close to users.
+- **Serverless Functions**
+  - Each API route lives in a function that scales automatically based on demand.
+- **Environment Variables Management**
+  - Stored securely in the hosting dashboard (never in code).
+- **CI/CD Pipeline** (e.g., GitHub Actions)
+  - Runs linting, type checks, and tests before merging code.
 
-- **Caching**
-  - **Redis** (optional) for session storage or caching dashboard queries to reduce database load.
-
-- **Object Storage**
-  - For file uploads or backups, integrate with AWS S3 or similar services.
-
-- **Message Queue**
-  - In future, use **RabbitMQ** or **Kafka** for background tasks (e.g., email notifications).
+Together, these components ensure reliability, fast response times, and minimal manual operations.
 
 ## 7. Security Measures
 
+To protect user data and keep everything compliant:
+
 - **Authentication & Authorization**
-  - Passwords hashed with **bcrypt** and salted.  
-  - Session tokens stored in secure, HttpOnly cookies or Authorization headers.  
-  - Protected endpoints verify tokens before proceeding.
-
-- **Data Encryption**
-  - **HTTPS/TLS** encrypts data in transit.  
-  - Database connections use SSL to encrypt data between the app and the database.
-
+  - **bcrypt** for hashing passwords so they’re never stored in plain text.
+  - **JWT** or HTTP-only cookies to keep sessions secure.
 - **Input Validation**
-  - Every incoming request is validated (e.g., valid email format, password length) to prevent SQL injection or other attacks.
-
-- **Web Security Best Practices**
-  - Enable **CORS** policies to limit allowed origins.  
-  - Use **CSRF tokens** or same-site cookies to prevent cross-site requests.  
-  - Set secure headers with **Helmet** or a similar middleware.
+  - Check all data coming into the server for correct format and length.
+- **Rate Limiting**
+  - Prevent brute-force attacks on the `/api/auth` endpoint.
+- **CORS Configuration**
+  - Only allow approved origins to talk to your API.
+- **HTTPS Everywhere**
+  - All traffic is encrypted in transit.
+- **Environment Variable Secrets**
+  - Keys and passwords live outside code in a secure vault.
 
 ## 8. Monitoring and Maintenance
 
+Keeping an eye on performance and errors is vital. Here’s how:
+
+- **Error Tracking**
+  - Tools like **Sentry** or **LogRocket** catch and report runtime errors.
 - **Performance Monitoring**
-  - Integrate **Sentry** or **LogRocket** for real-time crash reporting and performance tracing.  
-  - Use Vercel’s built-in analytics to track request latencies and error rates.
-
+  - Vercel Analytics or third-party services (Datadog, New Relic) track response times and throughput.
 - **Logging**
-  - Structured logs (JSON) for all API requests and errors, shipped to a log management service like **Datadog** or **Logflare**.
+  - Structured logs for each API invocation, stored or forwarded to a service like LogDNA.
+- **Regular Updates**
+  - Dependabot or similar tools can open pull requests when library updates or security patches are available.
+- **Automated Tests**
+  - Unit tests for critical logic (authentication, data validation).
+  - Integration tests for API routes.
 
-- **Health Checks**
-  - Define a `/health` endpoint that returns a 200 status if the service is up and the database is reachable.
-
-- **Maintenance Strategies**
-  - Automated migrations run on deploy to keep the database schema up to date.  
-  - Scheduled dependency audits and security scans (e.g., `npm audit`).
-  - Regular backups of the database (daily or weekly depending on usage).
+Maintenance involves reviewing logs, fixing errors, and updating dependencies on a regular schedule.
 
 ## 9. Conclusion and Overall Backend Summary
 
-The backend for **codeguide-starter** is built on Next.js API Routes and Node.js, paired with PostgreSQL for data and optional Redis for caching. It follows a clear layered architecture that keeps code easy to maintain and extend. With RESTful endpoints for authentication and data, secure practices like password hashing and HTTPS, and hosting on Vercel for scalability and global performance, this setup meets the project’s goals for a fast, secure, and developer-friendly foundation. Future enhancements—such as background job queues, advanced monitoring, or richer data models—can be added without disrupting the core structure.
+In this finance dashboard starter, the backend lives alongside the frontend using Next.js API Routes and TypeScript. We start simple with a static JSON file and plan to evolve into a full-fledged database-backed system (PostgreSQL or MongoDB) using an ORM.
+
+Key takeaways:
+
+- The architecture is **scalable**, **maintainable**, and **fast** thanks to serverless functions and SSR.
+- **Security** is built in from the ground up: hashed passwords, JWTs, rate limiting, and HTTPS.
+- **Hosting** on platforms like Vercel gives us automatic deployments, a global CDN, and easy secret management.
+- **Monitoring** and **CI/CD** ensure we catch issues early and keep the app healthy.
+
+This setup aligns with the project’s goals—making it quick to start, easy to extend, and ready to handle real user data in future phases.
