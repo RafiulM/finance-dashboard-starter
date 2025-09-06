@@ -1,90 +1,106 @@
-# Tech Stack Document
+# Tech Stack Document for `finance-dashboard-starter`
 
-This document explains the key technologies chosen for the **codeguide-starter** project. It’s written in everyday language so anyone—technical or not—can understand why each tool was picked and how it supports the application.
+This document explains, in plain language, the main technologies and tools used in the finance-dashboard-starter. You’ll see why each piece was chosen and how they fit together to power a modern, secure, and easy-to-extend finance dashboard.
 
-## 1. Frontend Technologies
-The frontend is everything the user sees and interacts with. For this project, we’ve used:
+## Frontend Technologies
+
+Our user interface (what you see and click on) is built with these tools:
 
 - **Next.js (App Router)**
-  - A React framework that makes page routing, server-side rendering, and API routes very simple.
-  - Enhances user experience by pre-rendering pages on the server or at build time, leading to faster initial load.
-- **React 18**
-  - The underlying library for building user interfaces with reusable components.
-  - Provides a smooth, interactive experience thanks to its virtual DOM and modern hooks.
+  • A framework on top of React that handles page routing, server-side rendering (fast first-page loads), and file-based organization.  
+  • Lets us mix server code and UI code in one project, simplifying development.
+- **React**
+  • A popular library for building interactive web components (buttons, charts, forms).  
+  • Encourages breaking the interface into small, reusable pieces.
 - **TypeScript**
-  - A superset of JavaScript that adds types (labels for data).
-  - Helps catch errors early during development and makes the code easier to maintain.
-- **CSS (globals.css & theme.css)**
-  - **globals.css** applies base styles (fonts, colors, resets) across the entire app.
-  - **dashboard/theme.css** defines the look and feel specific to the dashboard area.
-  - This separation keeps styles organized and avoids accidental style conflicts.
+  • A superset of JavaScript that adds type-checking, which helps catch errors early and makes the code easier to understand.
+- **CSS Styling**
+  • **globals.css**: Defines colors, fonts, and basic layout rules used everywhere.  
+  • **theme.css**: Contains style rules specific to the dashboard (colors for charts, card styles).  
+  • Both files ensure a consistent look and allow easy theme adjustments as needs change.
 
-By combining these tools, we have a clear structure (Next.js folders for pages and layouts), safer code (TypeScript), and flexible styling with vanilla CSS.
+Together, these choices give us a fast, responsive, and organized frontend that’s easy to maintain and enhance over time.
 
-## 2. Backend Technologies
-The backend handles data, user accounts, and the logic behind the scenes. Our choices here are:
+## Backend Technologies
+
+The behind-the-scenes work—user sign-in, data handling, security—is powered by:
 
 - **Next.js API Routes**
-  - Allows us to write server-side code (`route.ts` files) alongside our frontend in the same project.
-  - Runs on Node.js, so we can handle requests like sign-up, sign-in, and data fetching in one place.
-- **Node.js Runtime**
-  - The JavaScript environment on the server that executes our API routes.
-- **bcrypt** (npm package)
-  - A library for hashing passwords securely before storing them.
-  - Ensures that even if someone got access to our data, raw passwords aren’t visible.
-- **(Optional) NextAuth.js or JWT**
-  - While this starter kit shows a custom authentication flow, it can easily integrate services like NextAuth.js for email-based login or JWT (JSON Web Tokens) for stateless sessions.
+  • Built-in feature of Next.js that lets us write server code (Node.js) alongside the frontend.  
+  • Each file under `/app/api/` automatically becomes an endpoint (for example, `/api/auth`).
+- **Node.js (Server Runtime)**
+  • JavaScript running on the server to process requests, talk to data sources, and return results.
+- **TypeScript**
+  • Used here as well to keep our backend code safe and understandable.
+- **Authentication Stack**
+  • **bcrypt** for secure password hashing before we store or compare passwords.  
+  • **JSON Web Tokens (JWT)** or secure cookies to manage user sessions.
+- **Static Data (V1)**
+  • A simple `data.json` file holds sample financial data.  
+  • Allows rapid prototyping of the dashboard before connecting a real database.
 
-These components work together to receive user credentials, verify or store them securely, manage sessions or tokens, and deliver protected data back to the frontend.
+This setup gives a unified codebase for both frontend and backend, speeding up development and reducing complexity.
 
-## 3. Infrastructure and Deployment
-Infrastructure covers where and how we host the app, as well as how changes get delivered:
+## Infrastructure and Deployment
 
-- **Git & GitHub**
-  - Version control system (Git) and remote hosting (GitHub) keep track of all code changes and allow team collaboration.
-- **Vercel (or Netlify)**
-  - A popular hosting service optimized for Next.js, with one-click deployments and global content delivery.
-  - Automatically rebuilds and deploys the site whenever code is pushed to the main branch.
-- **GitHub Actions (CI/CD)**
-  - Automates tasks like linting (ESLint), formatting (Prettier), and running any tests you add.
-  - Ensures that only clean, tested code goes live.
+To keep the app reliable, up-to-date, and easy to deploy, we recommend:
 
-Together, these tools provide a reliable, scalable setup where every code change is tested and deployed quickly, with minimal manual work.
+- **Version Control with Git & GitHub**
+  • All code lives in a Git repository on GitHub.  
+  • Enables collaboration, change tracking, and branch-based feature work.
+- **Hosting on Vercel (or Equivalent)**
+  • Vercel is the platform created by the Next.js team and offers seamless deployment of both the website and serverless API routes.  
+  • Zero-config deployment: every merge can automatically build and publish the latest version.
+- **CI/CD Pipeline (e.g., GitHub Actions)**
+  • Automatically run linting, tests, and builds on every pull request.  
+  • Ensures that only safe, working code is merged into the main branch.
+- **Environment Management**
+  • Sensitive values (API keys, database URLs, JWT secrets) stored in environment variables and never checked into code.  
+  • Supports different settings for development, staging, and production.
 
-## 4. Third-Party Integrations
-While this starter kit is minimal by design, it already includes or can easily add:
+These choices give us confidence that new features or fixes won’t break the live app and that deployments are smooth and repeatable.
 
-- **bcrypt**
-  - For secure password hashing (included as an npm dependency).
-- **NextAuth.js** (optional)
-  - A full-featured authentication library supporting email/password, OAuth, and more.
-- **Sentry or LogRocket** (optional)
-  - For real-time error tracking and performance monitoring in production.
+## Third-Party Integrations
 
-These integrations help extend the app’s capabilities without building every feature from scratch.
+In the starter template, we keep external dependencies to a minimum. However, the structure is ready to plug in services like:
 
-## 5. Security and Performance Considerations
-We’ve baked in several measures to keep users safe and the app running smoothly:
+- **Financial Data APIs** (e.g., Plaid, Alpha Vantage)  
+  • To replace `data.json` with real, up-to-date finance information.
+- **Authentication Providers** (e.g., Auth0, OAuth with Google/GitHub)  
+  • For social logins or enterprise single sign-on.
+- **Analytics Tools** (e.g., Google Analytics, Mixpanel)  
+  • To track user behavior and app performance metrics.
 
-Security:
-- Passwords are never stored in plain text—bcrypt hashes them with a random salt.
-- API routes can implement CSRF protection and input validation to block malicious requests.
-- Session tokens or cookies are marked secure and HttpOnly to prevent theft via JavaScript.
+Integrating these services can be done by adding new API routes or client-side modules without restructuring the core project.
 
-Performance:
-- Server-side rendering (SSR) and static site generation (SSG) in Next.js deliver pages faster.
-- Code splitting and lazy-loaded components ensure users only download what they need.
-- Global CSS and theme files are small and cached by the browser for quick repeat visits.
+## Security and Performance Considerations
 
-These strategies work together to give users a fast, secure experience every time.
+Keeping your data safe and the experience fast are top priorities:
 
-## 6. Conclusion and Overall Tech Stack Summary
-In building **codeguide-starter**, we chose technologies that:
+Security Measures:
 
-- Align with modern web standards (Next.js, React, TypeScript).
-- Provide a clear, file-based project structure for rapid onboarding.
-- Offer built-in support for server-side rendering, API routes, and static assets.
-- Emphasize security through password hashing, session management, and safe defaults.
-- Enable easy scaling and future enhancements via modular code and optional integrations.
+- **Password Protection**: Using bcrypt to hash passwords; actual passwords are never stored in plain text.
+- **Session Security**: JWTs or http-only cookies with proper expiration to prevent unauthorized access.
+- **Input Validation and Sanitization**: Checking all user inputs on both frontend and backend to avoid injection attacks.
+- **Rate Limiting**: Restricting how often a user can hit the authentication endpoint to reduce brute-force attempts.
+- **CORS Configuration**: Making sure only allowed domains can talk to the API routes.
 
-This stack strikes a balance between simplicity for newcomers and flexibility for experienced teams. It accelerates development of a secure authentication flow and a polished dashboard, while leaving room to plug in databases, test suites, and advanced features as the project grows.
+Performance Optimizations:
+
+- **Server-Side Rendering (SSR)**: Next.js pre-renders pages, so users get content quickly on first load.
+- **Code Splitting**: Only loading the JavaScript needed for the current page.
+- **Static Assets**: Serving CSS and images from a global CDN (provided by Vercel).
+- **Lazy Loading**: Deferring non-critical parts of the UI until they’re needed (e.g., detailed charts).
+
+Together, these steps ensure users have a smooth, fast experience while their data remains protected.
+
+## Conclusion and Overall Tech Stack Summary
+
+In building the finance-dashboard-starter, we chose a set of technologies that balance:
+
+- **Simplicity**: One codebase for both UI and API (Next.js).  
+- **Performance**: Fast page loads and smart resource loading (SSR, code splitting).  
+- **Security**: Industry-standard practices for passwords, sessions, and data validation.  
+- **Scalability**: A modular structure ready for real databases, third-party services, and larger feature sets.
+
+By starting with Next.js, React, and TypeScript, you get a stable, widely adopted foundation. Adding CSS for styling keeps the UI flexible. On the backend, built-in API routes and Node.js handle logic without extra servers. Finally, modern deployment and CI/CD tools make sure your app stays healthy as it grows. This combination sets you up to focus on the financial features that matter, rather than on reinventing the basics.
